@@ -163,7 +163,7 @@
     <string name="finished">Finalizado</string>
     <string name="type">Tipo</string>
     <string name="remote_not_set">Diretório remoto não definido</string>
-    <string name="batching_select">Seleção de lote</string>
+    <string name="batch_select">Seleção de lote</string>
     <string name="welcome_to_use">Bem-vindo ao DataBackup</string>
     <string name="directory">Armazenamento</string>
     <string name="log">Logs</string>
@@ -330,4 +330,16 @@
     <string name="translators_desc">Agradecemos seus esforços</string>
     <string name="no_root_directory">Por favor, não selecione o diretório raiz.</string>
     <string name="third_party">Terceiro</string>
+    <string name="public_key">Chave pública</string>
+    <string name="private_key">Chave privada</string>
+    <string name="sftp_setup">Configuração SFTP</string>
+    <string name="kill_app_options">Matar opções de apps</string>
+    <string name="kill_app_options_desc">Comportamento antes do backup</string>
+    <string name="option_i">Opção 1</string>
+    <string name="option_ii">Opção 2</string>
+    <string name="disabled">Desativado</string>
+    <string name="language">Idioma</string>
+    <string name="download">Baixar</string>
+    <string name="changelog">Changelog</string>
+    <string name="args_update_from">Você pode atualizar da versão %1$s para a versão %2$s</string>
 </resources>

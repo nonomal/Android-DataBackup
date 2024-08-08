@@ -161,7 +161,7 @@
     <string name="clear_all">Очистить все</string>
     <string name="processing">Обработка</string>
     <string name="data_only">Только данные</string>
-    <string name="batching_select">Пакетный выбор</string>
+    <string name="batch_select">Пакетный выбор</string>
     <string name="in_use">Используется</string>
     <string name="overall_config">Общая конфигурация</string>
     <string name="connection_established">Связь успешно установлена</string>
@@ -224,7 +224,7 @@
     <string name="skip_setup">Пропустить установку</string>
     <string name="setup_backup_dir_desc">Если у вас есть существующий каталог, вам нужно будет выбрать его, чтобы появились резервные копии внутри.</string>
     <string name="skip_setup_alert">Вы не сможете выполнять резервное копирование или восстановление, пока не выберете каталог для хранения бекапов.</string>
-    <string name="app_short_desc">Бесплатное приложение для резервного копирования данных с открытым исходным кодом</string>
+    <string name="app_short_desc">Свободное приложение с открытым исходным кодом, для резервного копирования данных</string>
     <string name="abi_validation_desc">Проверьте, поддерживается ли ваше устройство</string>
     <string name="pull_down_to_refresh">Потяните для обновления</string>
     <string name="args_loading_from_user">Загрузка из пользователя %1$s</string>
@@ -327,4 +327,19 @@
     <string name="docs">Документация</string>
     <string name="translators">Переводчики</string>
     <string name="translators_desc">Мы признательны за их усилия</string>
+    <string name="public_key">Публичный ключ</string>
+    <string name="private_key">Приватный ключ</string>
+    <string name="afdian">AFDIAN</string>
+    <string name="sftp_setup">Настройка SFTP</string>
+    <string name="third_party">Сторонние</string>
+    <string name="no_root_directory">Пожалуйста, не выбирайте корневую директорию</string>
+    <string name="option_i">Первый вариант</string>
+    <string name="option_ii">Второй вариант</string>
+    <string name="disabled">Отключено</string>
+    <string name="kill_app_options">Способы остановки приложения</string>
+    <string name="kill_app_options_desc">Действия перед созданием бекапа</string>
+    <string name="language">Язык</string>
+    <string name="args_update_from">Вы можете обновить приложение с версии %1$s до %2$s</string>
+    <string name="download">Загрузить</string>
+    <string name="changelog">Список изменений</string>
 </resources>

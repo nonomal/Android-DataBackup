@@ -10,6 +10,7 @@ import com.xayah.core.datastore.readUserIdList
 import com.xayah.core.datastore.saveBackupFilterFlagIndex
 import com.xayah.core.datastore.saveBackupUserIdIndex
 import com.xayah.core.datastore.saveUserIdList
+import com.xayah.core.model.DataState
 import com.xayah.core.model.OpType
 import com.xayah.core.model.SortType
 import com.xayah.core.model.database.PackageEntity
@@ -22,6 +23,7 @@ import com.xayah.core.ui.viewmodel.UiIntent
 import com.xayah.core.ui.viewmodel.UiState
 import com.xayah.core.util.encodeURL
 import com.xayah.core.util.module.combine
+import com.xayah.core.util.navigateSingle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -36,7 +38,6 @@ import javax.inject.Inject
 data class IndexUiState(
     val isRefreshing: Boolean,
     val selectAll: Boolean,
-    val filterMode: Boolean,
     val uuid: UUID,
     val isLoading: Boolean,
 ) : UiState
@@ -53,6 +54,7 @@ sealed class IndexUiIntent : UiIntent {
     data class Select(val entity: PackageEntity) : IndexUiIntent()
     data class SelectAll(val selected: Boolean) : IndexUiIntent()
     data object BlockSelected : IndexUiIntent()
+    data class BatchSelectData(val apk: Boolean, val user: Boolean, val userDe: Boolean, val data: Boolean, val obb: Boolean, val media: Boolean) : IndexUiIntent()
     data class ToPageDetail(val navController: NavHostController, val packageEntity: PackageEntity) : IndexUiIntent()
 }
 
@@ -66,7 +68,6 @@ class IndexViewModel @Inject constructor(
     IndexUiState(
         isRefreshing = false,
         selectAll = false,
-        filterMode = true,
         uuid = UUID.randomUUID(),
         isLoading = false
     )
@@ -136,7 +137,7 @@ class IndexViewModel @Inject constructor(
             is IndexUiIntent.ToPageDetail -> {
                 val entity = intent.packageEntity
                 withMainContext {
-                    intent.navController.navigate(MainRoutes.PackagesBackupDetail.getRoute(entity.packageName.encodeURL(), entity.userId))
+                    intent.navController.navigateSingle(MainRoutes.PackagesBackupDetail.getRoute(entity.packageName.encodeURL(), entity.userId))
                 }
             }
 
@@ -145,6 +146,19 @@ class IndexViewModel @Inject constructor(
                 packages.forEach {
                     it.extraInfo.blocked = true
                     it.extraInfo.activated = false
+                }
+                packageRepo.upsert(packages)
+            }
+
+            is IndexUiIntent.BatchSelectData -> {
+                val packages = packageRepo.filterBackup(packageRepo.queryActivated(OpType.BACKUP))
+                packages.forEach {
+                    it.dataStates.apkState = if (intent.apk) DataState.Selected else DataState.NotSelected
+                    it.dataStates.userState = if (intent.user) DataState.Selected else DataState.NotSelected
+                    it.dataStates.userDeState = if (intent.userDe) DataState.Selected else DataState.NotSelected
+                    it.dataStates.dataState = if (intent.data) DataState.Selected else DataState.NotSelected
+                    it.dataStates.obbState = if (intent.obb) DataState.Selected else DataState.NotSelected
+                    it.dataStates.mediaState = if (intent.media) DataState.Selected else DataState.NotSelected
                 }
                 packageRepo.upsert(packages)
             }
@@ -164,8 +178,9 @@ class IndexViewModel @Inject constructor(
         combine(_packages, _keyState, _flagIndex, _sortIndexState, _sortTypeState, _userIdIndexList, _userIdList) { packages, key, flagIndex, sortIndex, sortType, userIdIndexList, userIdList ->
             packages.filter(packageRepo.getKeyPredicateNew(key = key))
                 .filter(packageRepo.getFlagPredicateNew(index = flagIndex))
-                .sortedWith(packageRepo.getSortComparatorNew(sortIndex = sortIndex, sortType = sortType))
                 .filter(packageRepo.getUserIdPredicateNew(indexList = userIdIndexList, userIdList = userIdList))
+                .sortedWith(packageRepo.getSortComparatorNew(sortIndex = sortIndex, sortType = sortType))
+                .sortedByDescending { it.extraInfo.activated }
         }.flowOnIO()
     private val _srcPackagesEmptyState: Flow<Boolean> = _packages.map { packages -> packages.isEmpty() }.flowOnIO()
     private val _packagesSelectedState: Flow<Int> = _packagesState.map { packages -> packages.count { it.extraInfo.activated } }.flowOnIO()

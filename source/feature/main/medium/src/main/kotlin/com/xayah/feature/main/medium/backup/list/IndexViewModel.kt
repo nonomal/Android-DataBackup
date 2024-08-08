@@ -14,6 +14,7 @@ import com.xayah.core.ui.viewmodel.IndexUiEffect
 import com.xayah.core.ui.viewmodel.UiIntent
 import com.xayah.core.ui.viewmodel.UiState
 import com.xayah.core.util.encodeURL
+import com.xayah.core.util.navigateSingle
 import com.xayah.feature.main.medium.R
 import com.xayah.libpickyou.ui.PickYouLauncher
 import com.xayah.libpickyou.ui.model.PermissionType
@@ -30,7 +31,6 @@ import javax.inject.Inject
 
 data class IndexUiState(
     val selectAll: Boolean,
-    val filterMode: Boolean,
     val uuid: UUID,
 ) : UiState
 
@@ -51,7 +51,7 @@ sealed class IndexUiIntent : UiIntent {
 class IndexViewModel @Inject constructor(
     private val mediaRepo: MediaRepository,
     rootService: RemoteRootService,
-) : BaseViewModel<IndexUiState, IndexUiIntent, IndexUiEffect>(IndexUiState(selectAll = false, filterMode = true, uuid = UUID.randomUUID())) {
+) : BaseViewModel<IndexUiState, IndexUiIntent, IndexUiEffect>(IndexUiState(selectAll = false, uuid = UUID.randomUUID())) {
     init {
         rootService.onFailure = {
             val msg = it.message
@@ -105,7 +105,7 @@ class IndexViewModel @Inject constructor(
             is IndexUiIntent.ToPageDetail -> {
                 val entity = intent.mediaEntity
                 withMainContext {
-                    intent.navController.navigate(MainRoutes.MediumBackupDetail.getRoute(entity.name.encodeURL()))
+                    intent.navController.navigateSingle(MainRoutes.MediumBackupDetail.getRoute(entity.name.encodeURL()))
                 }
             }
 
@@ -133,6 +133,7 @@ class IndexViewModel @Inject constructor(
         combine(_medium, _keyState, _sortIndexState, _sortTypeState) { medium, key, sortIndex, sortType ->
             medium.filter(mediaRepo.getKeyPredicateNew(key = key))
                 .sortedWith(mediaRepo.getSortComparatorNew(sortIndex = sortIndex, sortType = sortType))
+                .sortedByDescending { it.extraInfo.activated }
         }.flowOnIO()
     private val _srcMediumEmptyState: Flow<Boolean> = _medium.map { medium -> medium.isEmpty() }.flowOnIO()
     private val _mediumSelectedState: Flow<Int> = _mediumState.map { medium -> medium.count { it.extraInfo.activated } }.flowOnIO()

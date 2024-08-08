@@ -43,6 +43,9 @@ private class EnvInitializer : Shell.Initializer() {
                 .add("export PATH=${context.binDir()}:${USD}PATH")
                 .add("export HOME=${context.filesDir()}")
                 .add("set -o pipefail") // Ensure that the exit code of each command is correct.
+                .add("alias tar=${QUOTE}busybox tar$QUOTE")
+                .add("alias awk=${QUOTE}busybox awk$QUOTE")
+                .add("alias ps=${QUOTE}busybox ps$QUOTE")
                 .exec()
         }
     }
@@ -122,12 +125,12 @@ object BaseUtil {
     }
 
     suspend fun kill(context: Context, vararg keys: String) {
-        // ps -A | grep -w $key1 | grep -w $key2 | ... | awk 'NF>1{print $2}' | xargs kill -9
+        // ps -A | grep -w $key1 | grep -w $key2 | ... | awk 'NF>1{print $1}' | xargs kill -9
         val keysArg = keys.map { "| grep -w $it" }.toTypedArray()
         execute(
             "ps -A",
             *keysArg,
-            "| awk 'NF>1{print ${USD}2}'",
+            "| awk 'NF>1{print ${USD}1}'",
             "| xargs kill -9",
             shell = getNewShell(context),
             timeout = -1
@@ -162,6 +165,8 @@ object BaseUtil {
             File(dst).writeBytes(byteArray)
         }
     }
+
+    fun readIconFromPackageName(context: Context, pkgName: String): Drawable? = runCatching { context.packageManager.getApplicationIcon(pkgName) }.getOrNull()
 
     suspend fun readIcon(context: Context, src: String): Drawable? = withIOContext {
         runCatching {

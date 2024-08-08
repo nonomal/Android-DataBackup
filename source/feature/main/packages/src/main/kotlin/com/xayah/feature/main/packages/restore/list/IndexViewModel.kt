@@ -23,6 +23,7 @@ import com.xayah.core.ui.viewmodel.UiState
 import com.xayah.core.util.decodeURL
 import com.xayah.core.util.encodeURL
 import com.xayah.core.util.module.combine
+import com.xayah.core.util.navigateSingle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -37,7 +38,6 @@ data class IndexUiState(
     val cloudName: String,
     val cloudRemote: String,
     val selectAll: Boolean,
-    val filterMode: Boolean,
     val uuid: UUID,
     val isLoading: Boolean,
 ) : UiState
@@ -69,7 +69,6 @@ class IndexViewModel @Inject constructor(
         cloudName = args.get<String>(MainRoutes.ARG_ACCOUNT_NAME)?.decodeURL()?.trim() ?: "",
         cloudRemote = args.get<String>(MainRoutes.ARG_ACCOUNT_REMOTE)?.decodeURL()?.trim() ?: "",
         selectAll = false,
-        filterMode = true,
         uuid = UUID.randomUUID(),
         isLoading = false
     )
@@ -141,13 +140,13 @@ class IndexViewModel @Inject constructor(
             is IndexUiIntent.ToPageDetail -> {
                 val entity = intent.packageEntity
                 withMainContext {
-                    intent.navController.navigate(MainRoutes.PackagesRestoreDetail.getRoute(entity.packageName.encodeURL(), entity.userId, entity.preserveId))
+                    intent.navController.navigateSingle(MainRoutes.PackagesRestoreDetail.getRoute(entity.packageName.encodeURL(), entity.userId, entity.preserveId))
                 }
             }
 
             is IndexUiIntent.ToPageSetup -> {
                 withMainContext {
-                    intent.navController.navigate(
+                    intent.navController.navigateSingle(
                         MainRoutes.PackagesRestoreProcessingGraph.getRoute(
                             state.cloudName.ifEmpty { " " }.encodeURL(),
                             state.cloudRemote.encodeURL()
@@ -177,8 +176,9 @@ class IndexViewModel @Inject constructor(
         combine(_packages, _keyState, _flagIndex, _sortIndexState, _sortTypeState, _userIdIndexList, _userIdList) { packages, key, flagIndex, sortIndex, sortType, userIdIndexList, userIdList ->
             packages.filter(packageRepo.getKeyPredicateNew(key = key))
                 .filter(packageRepo.getFlagPredicateNew(index = flagIndex))
-                .sortedWith(packageRepo.getSortComparatorNew(sortIndex = sortIndex, sortType = sortType))
                 .filter(packageRepo.getUserIdPredicateNew(indexList = userIdIndexList, userIdList = userIdList))
+                .sortedWith(packageRepo.getSortComparatorNew(sortIndex = sortIndex, sortType = sortType))
+                .sortedByDescending { it.extraInfo.activated }
         }.flowOnIO()
     private val _srcPackagesEmptyState: Flow<Boolean> = _packages.map { packages -> packages.isEmpty() }.flowOnIO()
     private val _packagesSelectedState: Flow<Int> = _packagesState.map { packages -> packages.count { it.extraInfo.activated } }.flowOnIO()

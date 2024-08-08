@@ -37,6 +37,9 @@
 # awt
 -dontwarn java.awt.**
 
+# sftp
+-dontwarn sun.security.x509.X509Key
+
 -keep class com.xayah.** { *; }
 -keep class android.** { *; }
 -keep class com.android.** { *; }
@@ -56,3 +59,11 @@
 
 # awt
 -keep class java.awt.**
+
+# sftp
+-keep class sun.security.x509.X509Key
+
+# BC
+-keep class org.bouncycastle.jcajce.provider.** { *; }
+-keep class org.bouncycastle.jce.provider.** { *; }
+-keep class org.bouncycastle.crypto.** { *; }
