@@ -5,12 +5,13 @@ import com.xayah.core.common.util.toLineString
 import com.xayah.core.data.repository.CloudRepository
 import com.xayah.core.data.repository.MediaRepository
 import com.xayah.core.database.dao.TaskDao
-import com.xayah.core.datastore.readCompatibleMode
+import com.xayah.core.datastore.readCompressionLevel
 import com.xayah.core.datastore.readFollowSymlinks
 import com.xayah.core.model.DataType
 import com.xayah.core.model.OperationState
 import com.xayah.core.model.database.MediaEntity
 import com.xayah.core.model.database.TaskDetailMediaEntity
+import com.xayah.core.model.util.getCompressPara
 import com.xayah.core.network.client.CloudClient
 import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.util.LogUtil
@@ -22,7 +23,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import kotlin.coroutines.coroutineContext
 
@@ -35,7 +35,7 @@ class MediumBackupUtil @Inject constructor(
     private val cloudRepository: CloudRepository,
 ) {
     companion object {
-        private val TAG = this::class.java.simpleName
+        private const val TAG = "MediumBackupUtil"
     }
 
     private fun log(onMsg: () -> String): String = run {
@@ -43,8 +43,6 @@ class MediumBackupUtil @Inject constructor(
         LogUtil.log { TAG to msg }
         msg
     }
-
-    private val usePipe = runBlocking { context.readCompatibleMode().first() }
 
     private fun MediaEntity.getDataBytes() = mediaInfo.dataBytes
 
@@ -74,7 +72,7 @@ class MediumBackupUtil @Inject constructor(
         val name = m.name
         val ct = m.indexInfo.compressionType
         val dst = mediaRepository.getArchiveDst(dstDir = dstDir, ct = ct)
-        var isSuccess: Boolean
+        var isSuccess = true
         val out = mutableListOf<String>()
         val src = m.path
         val srcDir = PathUtil.getParentPath(src)
@@ -92,25 +90,23 @@ class MediumBackupUtil @Inject constructor(
         val sizeBytes = rootService.calculateSize(src)
         t.updateInfo(state = OperationState.PROCESSING, bytes = sizeBytes)
         if (rootService.exists(dst) && sizeBytes == r?.getDataBytes()) {
-            isSuccess = true
             t.updateInfo(state = OperationState.SKIP)
             out.add(log { "Data has not changed." })
         } else {
             // Compress and test.
             Tar.compress(
-                usePipe = usePipe,
                 exclusionList = listOf(),
                 h = if (context.readFollowSymlinks().first()) "-h" else "",
                 srcDir = srcDir,
-                src = name,
+                src = PathUtil.getFileName(src),// the name is not always the actual file name of the source,but the src does contain
                 dst = dst,
-                extra = ct.compressPara
+                extra = ct.getCompressPara(context.readCompressionLevel().first())
             ).also { result ->
                 isSuccess = result.isSuccess
                 out.addAll(result.out)
             }
             commonBackupUtil.testArchive(src = dst, ct = ct).also { result ->
-                isSuccess = isSuccess and result.isSuccess
+                isSuccess = isSuccess && result.isSuccess
                 out.addAll(result.out)
                 if (result.isSuccess) {
                     m.setDataBytes(sizeBytes)

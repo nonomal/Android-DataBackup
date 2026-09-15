@@ -7,9 +7,7 @@ import com.xayah.core.util.command.SELinux
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import java.nio.file.Paths
 import javax.inject.Inject
-import kotlin.io.path.pathString
 
 const val LogRelativeDir = "log"
 const val IconRelativeDir = "icon"
@@ -38,8 +36,22 @@ class PathUtil @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     companion object {
-        fun getParentPath(path: String): String = Paths.get(path).parent.pathString
-        fun getFileName(path: String): String = Paths.get(path).fileName.pathString
+        /**
+         * Returns the parent path, or empty string if this path does not have a parent.
+         */
+        fun getParentPath(path: String): String {
+            if (path.contains('/').not() || path == "/") return ""
+            val child = path.substring(path.lastIndexOf('/'))
+            return path.replace(child, "")
+        }
+
+        /**
+         * Returns the name of the file or directory denoted by this path, or empty string if this path has zero elements.
+         */
+        fun getFileName(path: String): String {
+            if (path.isEmpty()) return ""
+            return path.substring(path.lastIndexOf('/') + 1)
+        }
 
         // Paths for processing.
         @SuppressLint("SdCardPath")
@@ -51,6 +63,7 @@ class PathUtil @Inject constructor(
         fun getPackageMediaDir(userId: Int): String = "${getDataMediaDir()}/${userId}/Android/media"
 
         fun getPackageIconRelativePath(packageName: String): String = "${packageName}.png"
+        fun getPackageAdaptiveIconRelativePath(packageName: String): String = "adaptive@${getPackageIconRelativePath(packageName)}"
         fun getConfigsRelativeDir(): String = ConfigsRelativeDir
 
         fun getAppsRelativeDir(): String = AppsRelativeDir
@@ -63,14 +76,17 @@ class PathUtil @Inject constructor(
         suspend fun setFilesDirSELinux(context: Context) = SELinux.getContext(path = context.filesDir()).also { result ->
             val pathContext = if (result.isSuccess) result.outString else ""
             SELinux.chcon(context = pathContext, path = context.filesDir())
-            SELinux.chown(uid = context.applicationInfo.uid, path = context.filesDir())
+            val uidGid = context.applicationInfo.uid.toUInt()
+            SELinux.chown(uid = uidGid, gid = uidGid, path = context.filesDir())
         }
 
         fun getSsaidPath(userId: Int) = "/data/system/users/$userId/settings_ssaid.xml"
+
+        fun getPackageIconPath(context: Context, packageName: String, adaptive: Boolean): String = "${context.iconDir()}/${if (adaptive) getPackageAdaptiveIconRelativePath(packageName) else getPackageIconRelativePath(packageName)}"
     }
 
     fun getCloudTmpDir(): String = context.cloudTmpAbsoluteDir()
-    fun getPackageIconPath(packageName: String): String = "${context.iconDir()}/${getPackageIconRelativePath(packageName)}"
+    fun getPackageIconPath(packageName: String, adaptive: Boolean): String = getPackageIconPath(context, packageName, adaptive)
     private fun getConfigsDir(parent: String): String = "${parent}/${getConfigsRelativeDir()}"
     fun getLocalBackupConfigsDir(): String = getConfigsDir(parent = context.localBackupSaveDir())
     fun getCloudTmpConfigsDir(): String = getConfigsDir(parent = context.cloudTmpAbsoluteDir())

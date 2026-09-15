@@ -6,6 +6,7 @@ import com.xayah.core.data.R
 import com.xayah.core.database.dao.DirectoryDao
 import com.xayah.core.database.dao.PackageDao
 import com.xayah.core.datastore.ConstantUtil
+import com.xayah.core.datastore.ConstantUtil.DEFAULT_PATH_PARENT
 import com.xayah.core.datastore.readBackupSavePath
 import com.xayah.core.datastore.saveBackupSavePath
 import com.xayah.core.model.StorageType
@@ -18,10 +19,7 @@ import com.xayah.core.util.command.PreparationUtil
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import java.nio.file.Paths
 import javax.inject.Inject
-import kotlin.io.path.name
-import kotlin.io.path.pathString
 
 class DirectoryRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -45,14 +43,13 @@ class DirectoryRepository @Inject constructor(
         val customDirList = mutableListOf<DirectoryUpsertEntity>()
         pathList.forEach { pathString ->
             if (pathString.isNotEmpty()) {
-                val path = Paths.get(pathString)
-                val parent = path.parent.pathString
-                val child = path.name
+                val parent = PathUtil.getParentPath(pathString)
+                val child = PathUtil.getFileName(pathString)
 
                 // Custom storage
                 val dir = DirectoryUpsertEntity(
                     id = directoryDao.queryId(parent = parent, child = child),
-                    title = context.getString(R.string.custom_directory),
+                    title = "",
                     parent = parent,
                     child = child,
                     storageType = StorageType.CUSTOM,
@@ -82,7 +79,11 @@ class DirectoryRepository @Inject constructor(
             directoryDao.updateActive(active = false)
 
             // Internal storage
-            val internalList = rootService.listFilePaths(PathUtil.getDataMediaDir(), listFiles = false)
+            val internalList = rootService.listFilePaths(ConstantUtil.STORAGE_EMULATED_PATH, listFiles = false)
+                .filter { it.substring(it.lastIndexOf("/") + 1).toIntOrNull() != null }.toMutableList() // Just select 0 10 999 etc.
+            if (internalList.contains(DEFAULT_PATH_PARENT).not()) {
+                internalList.add(DEFAULT_PATH_PARENT)
+            }
             val internalDirs = mutableListOf<DirectoryUpsertEntity>()
             for (storageItem in internalList) {
                 // e.g. /data/media/0
@@ -91,7 +92,7 @@ class DirectoryRepository @Inject constructor(
                     internalDirs.add(
                         DirectoryUpsertEntity(
                             id = directoryDao.queryId(parent = storageItem, child = child),
-                            title = context.getString(R.string.internal_storage),
+                            title = "",
                             parent = storageItem,
                             child = child,
                             storageType = StorageType.INTERNAL,
@@ -111,7 +112,7 @@ class DirectoryRepository @Inject constructor(
                     externalDirs.add(
                         DirectoryUpsertEntity(
                             id = directoryDao.queryId(parent = storageItem, child = child),
-                            title = context.getString(R.string.external_storage),
+                            title = "",
                             parent = storageItem,
                             child = child,
                             storageType = StorageType.EXTERNAL,

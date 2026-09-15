@@ -32,6 +32,7 @@ class CloudRepository @Inject constructor(
     suspend fun upsert(item: CloudEntity) = cloudDao.upsert(item)
     suspend fun upsert(items: List<CloudEntity>) = cloudDao.upsert(items)
     suspend fun queryByName(name: String) = cloudDao.queryByName(name)
+    suspend fun query() = cloudDao.query()
 
     val clouds = cloudDao.queryFlow().distinctUntilChanged()
 
@@ -42,6 +43,7 @@ class CloudRepository @Inject constructor(
 
         var isSuccess = true
         val out = mutableListOf<String>()
+        PathUtil.setFilesDirSELinux(context)
 
         runCatching {
             client.upload(src = src, dst = dstDir, onUploading = onUploading)

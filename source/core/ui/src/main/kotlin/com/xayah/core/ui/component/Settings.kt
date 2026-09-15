@@ -16,17 +16,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.datastore.preferences.core.Preferences
@@ -34,19 +37,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.datastore.readStoreBoolean
 import com.xayah.core.datastore.saveStoreBoolean
 import com.xayah.core.ui.material3.Surface
-import com.xayah.core.ui.material3.toColor
-import com.xayah.core.ui.material3.tokens.ColorSchemeKeyTokens
-import com.xayah.core.ui.model.ImageVectorToken
-import com.xayah.core.ui.model.StringResourceToken
+import com.xayah.core.ui.theme.ThemedColorSchemeKeyTokens
+import com.xayah.core.ui.theme.value
+import com.xayah.core.ui.theme.withState
 import com.xayah.core.ui.token.SizeTokens
-import com.xayah.core.ui.util.value
 import kotlinx.coroutines.launch
 
 @Composable
 fun Clickable(
     enabled: Boolean = true,
-    desc: StringResourceToken? = null,
-    onClick: () -> Unit, indication: Indication? = rememberRipple(),
+    desc: String? = null,
+    descPadding: Boolean = false,
+    onClick: () -> Unit, indication: Indication? = ripple(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable BoxScope.() -> Unit
 ) {
@@ -61,9 +63,15 @@ fun Clickable(
             interactionSource = interactionSource
         ) {
             Box(
-                modifier = Modifier
-                    .paddingHorizontal(SizeTokens.Level24)
-                    .paddingVertical(SizeTokens.Level16),
+                modifier = if (descPadding) {
+                    Modifier
+                        .paddingHorizontal(SizeTokens.Level24)
+                        .paddingTop(SizeTokens.Level16)
+                } else {
+                    Modifier
+                        .paddingHorizontal(SizeTokens.Level24)
+                        .paddingVertical(SizeTokens.Level16)
+                },
                 contentAlignment = Alignment.Center
             ) {
                 content()
@@ -71,10 +79,16 @@ fun Clickable(
         }
         if (desc != null)
             TitleSmallText(
-                modifier = Modifier.paddingHorizontal(SizeTokens.Level24),
+                modifier = if (descPadding) {
+                    Modifier
+                        .paddingHorizontal(SizeTokens.Level24)
+                        .paddingBottom(SizeTokens.Level16)
+                } else {
+                    Modifier.paddingHorizontal(SizeTokens.Level24)
+                },
                 enabled = enabled,
-                text = desc.value,
-                color = ColorSchemeKeyTokens.OnSurfaceVariant.toColor(),
+                text = desc,
+                color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
                 fontWeight = FontWeight.Normal
             )
     }
@@ -85,22 +99,22 @@ fun Clickable(
 fun Clickable(
     enabled: Boolean = true,
     readOnly: Boolean = false,
-    title: StringResourceToken,
-    value: StringResourceToken? = null,
-    desc: StringResourceToken? = null,
+    title: String,
+    value: String? = null,
+    desc: String? = null,
     leadingContent: (@Composable RowScope.() -> Unit)? = null,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
     onClick: () -> Unit = {}
 ) {
-    Clickable(enabled = enabled, desc = desc, onClick = onClick, indication = if (readOnly) null else rememberRipple()) {
+    Clickable(enabled = enabled, desc = desc, onClick = onClick, indication = if (readOnly) null else ripple()) {
         Row(modifier = Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level16)) {
             if (leadingContent != null) leadingContent()
             Column(modifier = Modifier.weight(1f)) {
-                AnimatedTextContainer(targetState = title.value) { text ->
-                    TitleLargeText(enabled = enabled, text = text, color = ColorSchemeKeyTokens.OnSurface.toColor(enabled), fontWeight = FontWeight.Normal)
+                AnimatedTextContainer(targetState = title) { text ->
+                    TitleLargeText(enabled = enabled, text = text, color = ThemedColorSchemeKeyTokens.OnSurface.value.withState(enabled), fontWeight = FontWeight.Normal)
                 }
-                if (value != null) AnimatedTextContainer(targetState = value.value) { text ->
-                    TitleSmallText(enabled = enabled, text = text, color = ColorSchemeKeyTokens.Outline.toColor(enabled), fontWeight = FontWeight.Normal)
+                if (value != null) AnimatedTextContainer(targetState = value) { text ->
+                    TitleSmallText(enabled = enabled, text = text, color = ThemedColorSchemeKeyTokens.Outline.value.withState(enabled), fontWeight = FontWeight.Normal)
                 }
             }
             if (trailingContent != null) trailingContent()
@@ -112,10 +126,10 @@ fun Clickable(
 @Composable
 fun Clickable(
     enabled: Boolean = true,
-    icon: ImageVectorToken? = null,
-    title: StringResourceToken,
-    value: StringResourceToken? = null,
-    desc: StringResourceToken? = null,
+    icon: ImageVector? = null,
+    title: String,
+    value: String? = null,
+    desc: String? = null,
     onClick: () -> Unit = {}
 ) {
     Clickable(
@@ -124,7 +138,7 @@ fun Clickable(
         value = value,
         desc = desc,
         leadingContent = {
-            if (icon != null) Icon(imageVector = icon.value, contentDescription = null)
+            if (icon != null) Icon(imageVector = icon, contentDescription = null)
         },
         onClick = onClick
     )
@@ -134,31 +148,60 @@ fun Clickable(
 @Composable
 fun Clickable(
     enabled: Boolean = true,
-    title: StringResourceToken, value: StringResourceToken? = null,
-    desc: StringResourceToken? = null,
-    leadingIcon: ImageVectorToken? = null,
-    trailingIcon: ImageVectorToken? = null,
+    title: String, value: String? = null,
+    desc: String? = null,
+    leadingIcon: ImageVector? = null,
+    trailingIcon: ImageVector? = null,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable (ColumnScope.() -> Unit)? = null,
     onClick: () -> Unit = {}
 ) {
-    Clickable(enabled = enabled, desc = desc, onClick = onClick, indication = rememberRipple(), interactionSource = interactionSource) {
+    Clickable(enabled = enabled, desc = desc, onClick = onClick, indication = ripple(), interactionSource = interactionSource) {
         Row(modifier = Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level16)) {
             if (leadingIcon != null) {
-                Icon(imageVector = leadingIcon.value, contentDescription = null, tint = ColorSchemeKeyTokens.LocalContent.toColor(enabled))
+                Icon(imageVector = leadingIcon, contentDescription = null, tint = LocalContentColor.current.withState(enabled))
             }
             Column(modifier = Modifier.weight(1f)) {
-                AnimatedTextContainer(targetState = title.value) { text ->
-                    TitleLargeText(enabled = enabled, text = text, color = ColorSchemeKeyTokens.OnSurface.toColor(enabled), fontWeight = FontWeight.Normal)
+                AnimatedTextContainer(targetState = title) { text ->
+                    TitleLargeText(enabled = enabled, text = text, color = ThemedColorSchemeKeyTokens.OnSurface.value.withState(enabled), fontWeight = FontWeight.Normal)
                 }
-                if (value != null) AnimatedTextContainer(targetState = value.value) { text ->
-                    TitleSmallText(enabled = enabled, text = text, color = ColorSchemeKeyTokens.Outline.toColor(enabled), fontWeight = FontWeight.Normal)
+                if (value != null) AnimatedTextContainer(targetState = value) { text ->
+                    TitleSmallText(enabled = enabled, text = text, color = ThemedColorSchemeKeyTokens.Outline.value.withState(enabled), fontWeight = FontWeight.Normal)
                 }
                 content?.invoke(this)
             }
             if (trailingIcon != null) {
-                Icon(imageVector = trailingIcon.value, contentDescription = null, tint = ColorSchemeKeyTokens.LocalContent.toColor(enabled))
+                Icon(imageVector = trailingIcon, contentDescription = null, tint = LocalContentColor.current.withState(enabled))
             }
+        }
+    }
+}
+
+@ExperimentalAnimationApi
+@Composable
+fun Clickable(
+    enabled: Boolean = true,
+    title: String, value: String? = null,
+    desc: String? = null,
+    leadingIcon: @Composable (RowScope.() -> Unit)? = null,
+    trailingIcon: @Composable (RowScope.() -> Unit)? = null,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    content: @Composable (ColumnScope.() -> Unit)? = null,
+    onClick: () -> Unit = {}
+) {
+    Clickable(enabled = enabled, desc = desc, onClick = onClick, indication = ripple(), interactionSource = interactionSource) {
+        Row(modifier = Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level16)) {
+            leadingIcon?.invoke(this)
+            Column(modifier = Modifier.weight(1f)) {
+                AnimatedTextContainer(targetState = title) { text ->
+                    TitleLargeText(enabled = enabled, text = text, color = ThemedColorSchemeKeyTokens.OnSurface.value.withState(enabled), fontWeight = FontWeight.Normal)
+                }
+                if (value != null) AnimatedTextContainer(targetState = value) { text ->
+                    TitleSmallText(enabled = enabled, text = text, color = ThemedColorSchemeKeyTokens.Outline.value.withState(enabled), fontWeight = FontWeight.Normal)
+                }
+                content?.invoke(this)
+            }
+            trailingIcon?.invoke(this)
         }
     }
 }
@@ -168,11 +211,11 @@ fun Clickable(
 @Composable
 fun Selectable(
     enabled: Boolean = true,
-    leadingIcon: ImageVectorToken? = null,
-    title: StringResourceToken,
-    value: StringResourceToken? = null,
-    desc: StringResourceToken? = null,
-    current: StringResourceToken,
+    leadingIcon: ImageVector? = null,
+    title: String,
+    value: String? = null,
+    desc: String? = null,
+    current: String,
     onClick: suspend () -> Unit = suspend {}
 ) {
     val scope = rememberCoroutineScope()
@@ -182,12 +225,12 @@ fun Selectable(
         value = value,
         desc = desc,
         leadingContent = if (leadingIcon == null) null else {
-            { Icon(imageVector = leadingIcon.value, contentDescription = null) }
+            { Icon(imageVector = leadingIcon, contentDescription = null) }
         },
         trailingContent = {
             FilledTonalButton(enabled = enabled, onClick = { scope.launch { onClick() } }) {
 
-                Text(text = current.value)
+                Text(text = current)
             }
         },
         onClick = { scope.launch { onClick() } }
@@ -199,11 +242,11 @@ fun Selectable(
 fun Switchable(
     enabled: Boolean = true,
     checked: Boolean,
-    icon: ImageVectorToken? = null,
-    title: StringResourceToken,
-    checkedText: StringResourceToken,
-    notCheckedText: StringResourceToken = checkedText,
-    desc: StringResourceToken? = null,
+    icon: ImageVector? = null,
+    title: String,
+    checkedText: String,
+    notCheckedText: String = checkedText,
+    desc: String? = null,
     onCheckedChange: (Boolean) -> Unit = {}
 ) {
     Clickable(
@@ -212,7 +255,7 @@ fun Switchable(
         value = if (checked) checkedText else notCheckedText,
         desc = desc,
         leadingContent = {
-            if (icon != null) Icon(imageVector = icon.value, contentDescription = null)
+            if (icon != null) Icon(imageVector = icon, contentDescription = null)
         },
         trailingContent = {
             Divider(
@@ -240,11 +283,11 @@ fun Switchable(
     enabled: Boolean = true,
     key: Preferences.Key<Boolean>,
     defValue: Boolean = true,
-    icon: ImageVectorToken? = null,
-    title: StringResourceToken,
-    checkedText: StringResourceToken,
-    notCheckedText: StringResourceToken = checkedText,
-    desc: StringResourceToken? = null,
+    icon: ImageVector? = null,
+    title: String,
+    checkedText: String,
+    notCheckedText: String = checkedText,
+    desc: String? = null,
     onCheckedChange: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -273,13 +316,74 @@ fun Switchable(
 
 @ExperimentalAnimationApi
 @Composable
+fun Slideable(
+    enabled: Boolean = true,
+    readOnly: Boolean = false,
+    title: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    desc: String? = null,
+    leadingContent: (@Composable RowScope.() -> Unit)? = null,
+    trailingContent: (@Composable RowScope.() -> Unit)? = null,
+    onClick: () -> Unit = {}
+) {
+    Clickable(enabled = enabled, desc = desc, descPadding = true, onClick = onClick, indication = if (readOnly) null else ripple()) {
+        Row(modifier = Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level16)) {
+            if (leadingContent != null) leadingContent()
+            Column(modifier = Modifier.weight(1f)) {
+                AnimatedTextContainer(targetState = title) { text ->
+                    TitleLargeText(enabled = enabled, text = text, color = ThemedColorSchemeKeyTokens.OnSurface.value.withState(enabled), fontWeight = FontWeight.Normal)
+                }
+                Slider(
+                    value = value,
+                    onValueChange = onValueChange,
+                    steps = steps,
+                    valueRange = valueRange
+                )
+            }
+            if (trailingContent != null) trailingContent()
+        }
+    }
+}
+
+@ExperimentalAnimationApi
+@Composable
+fun Slideable(
+    enabled: Boolean = true,
+    icon: ImageVector? = null,
+    title: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    desc: String? = null,
+    onValueChange: (Float) -> Unit,
+) {
+    Slideable(
+        enabled = enabled,
+        title = title,
+        value = value,
+        valueRange = valueRange,
+        steps = steps,
+        desc = desc,
+        onValueChange = onValueChange,
+        leadingContent = {
+            if (icon != null) Icon(imageVector = icon, contentDescription = null)
+        },
+        onClick = {}
+    )
+}
+
+@ExperimentalAnimationApi
+@Composable
 fun Checkable(
     enabled: Boolean = true,
     checked: Boolean,
-    icon: ImageVectorToken? = null,
-    title: StringResourceToken,
-    value: StringResourceToken,
-    desc: StringResourceToken? = null,
+    icon: ImageVector? = null,
+    title: String,
+    value: String,
+    desc: String? = null,
     onCheckedChange: (Boolean) -> Unit = {}
 ) {
     Clickable(
@@ -288,7 +392,7 @@ fun Checkable(
         value = value,
         desc = desc,
         leadingContent = {
-            if (icon != null) Icon(imageVector = icon.value, contentDescription = null)
+            if (icon != null) Icon(imageVector = icon, contentDescription = null)
         },
         trailingContent = {
             CheckIconButton(enabled = enabled, checked = checked, onCheckedChange = { onCheckedChange(checked) })
@@ -302,7 +406,7 @@ fun Checkable(
 @Composable
 fun Title(
     enabled: Boolean = true,
-    title: StringResourceToken,
+    title: String,
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -312,8 +416,8 @@ fun Title(
                 .paddingHorizontal(SizeTokens.Level24)
                 .paddingVertical(SizeTokens.Level12),
             enabled = enabled,
-            text = title.value,
-            color = ColorSchemeKeyTokens.Primary.toColor(),
+            text = title,
+            color = ThemedColorSchemeKeyTokens.Primary.value,
             fontWeight = FontWeight.Medium
         )
         Column(verticalArrangement = verticalArrangement) {

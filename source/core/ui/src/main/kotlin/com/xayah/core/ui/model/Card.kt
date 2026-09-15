@@ -1,28 +1,28 @@
 package com.xayah.core.ui.model
 
 import com.xayah.core.model.OperationState
-import com.xayah.core.ui.util.fromString
 
 data class ProcessingCardItem(
     val state: OperationState = OperationState.IDLE,
     val progress: Float = -1f,
-    val title: StringResourceToken = StringResourceToken.fromString(""),
-    val content: StringResourceToken = StringResourceToken.fromString(""),
-    val log: StringResourceToken = StringResourceToken.fromString(""),
+    val title: String = "",
+    val content: String = "",
+    val log: String = "",
 )
 
-data class ProcessingPackageCardItem(
+data class ProcessingDataCardItem(
     val state: OperationState = OperationState.IDLE,
     val progress: Float = -1f,
-    val title: StringResourceToken = StringResourceToken.fromString(""),
-    val packageName: String = "",
+    val processingIndex: Int = 0,
+    val title: String = "",
+    val key: String = "",
     val items: List<ProcessingCardItem> = listOf(),
 )
 
 data class ProcessingMediaCardItem(
     val state: OperationState = OperationState.IDLE,
     val progress: Float = -1f,
-    val title: StringResourceToken = StringResourceToken.fromString(""),
+    val title: String = "",
     val name: String = "",
     val items: List<ProcessingCardItem> = listOf(),
 )

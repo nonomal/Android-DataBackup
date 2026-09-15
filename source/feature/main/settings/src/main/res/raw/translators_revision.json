@@ -78,5 +78,80 @@
     "actions": {
       "Bosnian": 0
     }
+  },
+  "claymanoff@gmail.com": {
+    "name": "kaajjo",
+    "avatar": "https://avatars.githubusercontent.com/kaajjo",
+    "link": "https://github.com/kaajjo",
+    "actions": {
+      "Russian": 0
+    }
+  },
+  "zezomostafa120@gmail.com": {
+    "name": "ZG_DEV",
+    "avatar": "https://avatars.githubusercontent.com/ZG089",
+    "link": "https://github.com/ZG089",
+    "actions": {
+      "Arabic": 0
+    }
+  },
+  "huseinchafa@gmail.com": {
+    "name": "MasFha",
+    "avatar": "https://avatars.githubusercontent.com/u/140007137",
+    "link": "https://github.com/MasFha",
+    "actions": {
+      "Indonesian": 0
+    }
+  },
+  "ahakkoca07@gmail.com": {
+    "name": "ahakkoca07",
+    "avatar": "https://avatars.githubusercontent.com/ahakkoca07",
+    "link": "https://github.com/ahakkoca07",
+    "actions": {
+      "Turkish": 0
+    }
+  },
+  "davdavid7xw@gmail.com": {
+    "name": "david7xw",
+    "avatar": "https://avatars.githubusercontent.com/david7xw",
+    "link": "https://github.com/david7xw",
+    "actions": {
+      "Romanian": 0
+    }
+  },
+  "davidluca611@gmail.com": {
+    "name": "david7xw",
+    "avatar": "https://avatars.githubusercontent.com/david7xw",
+    "link": "https://github.com/david7xw",
+    "actions": {
+      "Romanian": 1
+    }
+  },
+  "bartokk@gmail.com": {
+    "name": "bartokk",
+    "avatar": "https://avatars.githubusercontent.com/bartokk",
+    "link": "https://github.com/bartokk",
+    "actions": {
+      "Italian": 0,
+      "English": 0
+    }
+  },
+  "swyterzone@gmail.com": {
+    "name": "Swyter",
+    "avatar": "https://avatars.githubusercontent.com/swyter",
+    "link": "https://github.com/Swyter",
+    "actions": {
+      "Spanish": 0,
+      "Castellano": 0
+    }
+  },
+  "champinondev@gmail.com": {
+    "name": "Champiñon Traductor",
+    "avatar": "https://avatars.githubusercontent.com/champinondev-lab",
+    "link": "https://github.com/champinondev-lab",
+    "actions": {
+      "English": 0,
+      "Spanish": 0
+    }
   }
 }

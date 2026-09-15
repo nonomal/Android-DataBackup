@@ -28,7 +28,6 @@ import com.xayah.core.util.withIOContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import net.lingala.zip4j.ZipFile
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -43,6 +42,8 @@ private class EnvInitializer : Shell.Initializer() {
                 .add("export PATH=${context.binDir()}:${USD}PATH")
                 .add("export HOME=${context.filesDir()}")
                 .add("set -o pipefail") // Ensure that the exit code of each command is correct.
+                .add("alias awk=${QUOTE}busybox awk$QUOTE")
+                .add("alias ps=${QUOTE}busybox ps$QUOTE")
                 .exec()
         }
     }
@@ -60,7 +61,7 @@ object BaseUtil {
         .setCommands(context.readCustomSUFile().first())
         .setTimeout(3)
 
-    private suspend fun getNewShell(context: Context) = getShellBuilder(context).build()
+    private suspend fun getNewShell(context: Context): Shell? = runCatching { getShellBuilder(context).build() }.getOrNull()
 
     suspend fun initializeEnvironment(context: Context) = run {
         // Set up shell environment.
@@ -122,27 +123,37 @@ object BaseUtil {
     }
 
     suspend fun kill(context: Context, vararg keys: String) {
-        // ps -A | grep -w $key1 | grep -w $key2 | ... | awk 'NF>1{print $2}' | xargs kill -9
-        val keysArg = keys.map { "| grep -w $it" }.toTypedArray()
-        execute(
-            "ps -A",
-            *keysArg,
-            "| awk 'NF>1{print ${USD}2}'",
-            "| xargs kill -9",
-            shell = getNewShell(context),
-            timeout = -1
-        )
+        val shell = getNewShell(context)
+        if (shell != null) {
+            // ps -A | grep -w $key1 | grep -w $key2 | ... | awk 'NF>1{print $1}' | xargs kill -9
+            val keysArg = keys.map { "| grep -w $it" }.toTypedArray()
+            execute(
+                "ps -A",
+                *keysArg,
+                "| awk 'NF>1{print ${USD}1}'",
+                "| xargs kill -9",
+                shell = shell,
+                timeout = -1
+            )
+        } else {
+            log { "kill" to "Failed to get a new shell!" }
+        }
     }
 
-    suspend fun killPackage(context: Context, userId: Int, packageName: String) = runBlocking {
-        val cmd = """
+    suspend fun killPackage(context: Context, userId: Int, packageName: String) {
+        val shell = getNewShell(context)
+        if (shell != null) {
+            val cmd = """
             until [[ $USD(dumpsys activity processes | grep "packageList" | cut -d '{' -f2 | cut -d '}' -f1 | egrep -w "$packageName" | sed -n '1p') = "" ]]; do
                 killall -9 "$packageName" &>/dev/null
                 am force-stop --user "$userId" "$packageName" &>/dev/null
                 am kill "$packageName" &>/dev/null
             done
         """.trimIndent()
-        execute(cmd, shell = getNewShell(context), timeout = 3)
+            execute(cmd, shell = shell, timeout = 3)
+        } else {
+            log { "killPackage" to "Failed to get a new shell!" }
+        }
     }
 
     suspend fun mkdirs(dst: String) = withIOContext {
@@ -162,6 +173,8 @@ object BaseUtil {
             File(dst).writeBytes(byteArray)
         }
     }
+
+    fun readIconFromPackageName(context: Context, pkgName: String): Drawable? = runCatching { context.packageManager.getApplicationIcon(pkgName) }.getOrNull()
 
     suspend fun readIcon(context: Context, src: String): Drawable? = withIOContext {
         runCatching {

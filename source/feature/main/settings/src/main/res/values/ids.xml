@@ -50,6 +50,7 @@
     <item name="no_browser" type="string" />
     <item name="donate" type="string" />
     <item name="buymeacoffee" type="string" />
+    <item name="paypal" type="string" />
     <item name="afdian" type="string" />
     <item name="github" type="string" />
     <item name="contact" type="string" />
@@ -57,9 +58,24 @@
     <item name="translators" type="string" />
     <item name="translators_desc" type="string" />
     <item name="unknown" type="string" />
+    <item name="kill_app_options" type="string" />
+    <item name="kill_app_options_desc" type="string" />
+    <item name="language" type="string" />
+    <item name="system" type="string" />
+    <item name="backup_configs" type="string" />
+    <item name="backup_configs_desc" type="string" />
+    <item name="restore_permissions" type="string" />
+    <item name="restore_permissions_desc" type="string" />
+    <item name="restore_ssaid" type="string" />
+    <item name="restore_ssaid_desc" type="string" />
+    <item name="compression_level" type="string" />
+    <item name="compression_level_desc" type="string" />
+    <item name="args_current_level" type="string" />
 
     <item name="ic_rounded_acute" type="drawable" />
     <item name="ic_rounded_history" type="drawable" />
     <item name="ic_rounded_folder_open" type="drawable" />
     <item name="ic_rounded_emoticon" type="drawable" />
+
+    <item name="kill_app_options" type="array" />
 </resources>

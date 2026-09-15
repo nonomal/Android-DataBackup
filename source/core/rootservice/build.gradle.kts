@@ -24,7 +24,13 @@ dependencies {
     implementation(project(":core:util"))
     implementation(project(":core:common"))
     implementation(project(":core:datastore"))
+    implementation(project(":core:model"))
+    implementation(project(":native"))
 
+    // AndroidX
+    implementation(libs.androidx.core.ktx)
+
+    // Coroutines
     implementation(libs.kotlinx.coroutines.core.jvm)
 
     // libsu

@@ -3,17 +3,17 @@ package com.xayah.feature.main.configurations
 import android.content.Context
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.xayah.core.data.repository.CloudRepository
+import com.xayah.core.data.repository.LabelsRepo
 import com.xayah.core.data.repository.MediaRepository
 import com.xayah.core.data.repository.PackageRepository
 import com.xayah.core.datastore.ConstantUtil
-import com.xayah.core.model.BlacklistAppItem
-import com.xayah.core.model.BlacklistFileItem
 import com.xayah.core.model.CompressionType
 import com.xayah.core.model.Configurations
-import com.xayah.core.model.ConfigurationsBlacklist
-import com.xayah.core.model.FileItem
 import com.xayah.core.model.OpType
 import com.xayah.core.model.database.CloudEntity
+import com.xayah.core.model.database.LabelAppCrossRefEntity
+import com.xayah.core.model.database.LabelEntity
+import com.xayah.core.model.database.LabelFileCrossRefEntity
 import com.xayah.core.model.database.MediaEntity
 import com.xayah.core.model.database.MediaExtraInfo
 import com.xayah.core.model.database.MediaIndexInfo
@@ -26,15 +26,13 @@ import com.xayah.core.model.database.PackageIndexInfo
 import com.xayah.core.model.database.PackageInfo
 import com.xayah.core.model.database.PackageStorageStats
 import com.xayah.core.rootservice.service.RemoteRootService
+import com.xayah.core.service.util.CommonBackupUtil
 import com.xayah.core.ui.component.DialogState
 import com.xayah.core.ui.component.select
 import com.xayah.core.ui.material3.SnackbarDuration
 import com.xayah.core.ui.material3.SnackbarType
 import com.xayah.core.ui.model.DialogCheckBoxItem
-import com.xayah.core.ui.model.StringResourceToken
-import com.xayah.core.ui.util.fromString
-import com.xayah.core.ui.util.fromStringArgs
-import com.xayah.core.ui.util.fromStringId
+import com.xayah.core.ui.util.joinOf
 import com.xayah.core.ui.viewmodel.BaseViewModel
 import com.xayah.core.ui.viewmodel.IndexUiEffect
 import com.xayah.core.ui.viewmodel.UiIntent
@@ -53,6 +51,7 @@ data class IndexUiState(
     val blacklistSelected: Boolean,
     val cloudSelected: Boolean,
     val fileSelected: Boolean,
+    val labelSelected: Boolean,
 ) : UiState
 
 sealed class IndexUiIntent : UiIntent {
@@ -68,52 +67,25 @@ class IndexViewModel @Inject constructor(
     private val packageRepo: PackageRepository,
     private val cloudRepo: CloudRepository,
     private val mediaRepo: MediaRepository,
+    private val labelsRepo: LabelsRepo,
+    private val commonBackupUtil: CommonBackupUtil,
     private val pathUtil: PathUtil,
 ) : BaseViewModel<IndexUiState, IndexUiIntent, IndexUiEffect>(
     IndexUiState(
-        selectedCount = 3,
+        selectedCount = 4,
         blacklistSelected = true,
         cloudSelected = true,
         fileSelected = true,
+        labelSelected = true,
     )
 ) {
     override suspend fun onEvent(state: IndexUiState, intent: IndexUiIntent) {
         when (intent) {
             is IndexUiIntent.Export -> {
-                val config = Configurations(
-                    blacklist = ConfigurationsBlacklist(apps = listOf(), files = listOf()),
-                    cloud = listOf(),
-                    file = listOf(),
-                )
-                if (state.blacklistSelected) {
-                    val apps = mutableListOf<BlacklistAppItem>()
-                    blockedPackagesState.value.forEach {
-                        apps.add(BlacklistAppItem(it.packageName, it.userId))
-                    }
-                    val files = mutableListOf<BlacklistFileItem>()
-                    blockedFilesState.value.forEach {
-                        files.add(BlacklistFileItem(it.name, it.path))
-                    }
-                    config.blacklist.apps = apps
-                    config.blacklist.files = files
-                }
-                if (state.cloudSelected) {
-                    config.cloud = accounts.value
-                }
-                if (state.fileSelected) {
-                    config.file = files.value.map { FileItem(it.name, it.path) }
-                }
                 rootService.mkdirs(pathUtil.getLocalBackupConfigsDir())
-                val dst = "${pathUtil.getLocalBackupConfigsDir()}/$ConfigsConfigurationsName"
-                rootService.writeJson(data = config, dst = dst).apply {
-                    if (isSuccess) {
-                        emitEffect(IndexUiEffect.DismissSnackbar)
-                        emitEffect(IndexUiEffect.ShowSnackbar(type = SnackbarType.Success, message = "${context.getString(R.string.exported)}: $dst", duration = SnackbarDuration.Short))
-                    } else {
-                        emitEffect(IndexUiEffect.DismissSnackbar)
-                        emitEffect(IndexUiEffect.ShowSnackbar(type = SnackbarType.Error, message = context.getString(R.string.failed), duration = SnackbarDuration.Short))
-                    }
-                }
+                val result = commonBackupUtil.backupConfigs(pathUtil.getLocalBackupConfigsDir())
+                emitEffect(IndexUiEffect.DismissSnackbar)
+                emitEffect(IndexUiEffect.ShowSnackbar(type = if (result.isSuccess) SnackbarType.Success else SnackbarType.Error, message = result.outString, duration = SnackbarDuration.Short))
             }
 
             is IndexUiIntent.Import -> {
@@ -121,61 +93,81 @@ class IndexViewModel @Inject constructor(
                 if (rootService.exists(src)) {
                     val config = rootService.readJson<Configurations>(src)
                     val items = mutableListOf<DialogCheckBoxItem<String>>()
-                    runCatching {
-                        val appsCount = config?.blacklist?.apps?.size ?: 0
-                        val filesCount = config?.blacklist?.files?.size ?: 0
-                        if (appsCount + filesCount != 0) {
-                            items.add(
-                                DialogCheckBoxItem(
-                                    enum = ConstantUtil.CONFIGURATIONS_KEY_BLACKLIST,
-                                    title = StringResourceToken.fromStringArgs(
-                                        StringResourceToken.fromStringId(R.string.blacklist),
-                                        StringResourceToken.fromString(" (${appsCount + filesCount})"),
+                    if (config != null) {
+                        runCatching {
+                            val appsCount = config.blacklist.apps.size
+                            val filesCount = config.blacklist.files.size
+                            if (appsCount + filesCount != 0) {
+                                items.add(
+                                    DialogCheckBoxItem(
+                                        enum = ConstantUtil.CONFIGURATIONS_KEY_BLACKLIST,
+                                        title = joinOf(
+                                            context.getString(R.string.blacklist),
+                                            " (${appsCount + filesCount})",
+                                        )
                                     )
                                 )
-                            )
-                        }
-                    }.withLog()
-                    runCatching {
-                        if (config?.cloud != null) {
+                            }
+                        }.withLog()
+                        runCatching {
                             if (config.cloud.isNotEmpty()) {
                                 items.add(
                                     DialogCheckBoxItem(
                                         enum = ConstantUtil.CONFIGURATIONS_KEY_CLOUD,
-                                        title = StringResourceToken.fromStringArgs(
-                                            StringResourceToken.fromStringId(R.string.cloud),
-                                            StringResourceToken.fromString(" (${config.cloud.size})"),
-                                        )
+                                        title = joinOf(context.getString(R.string.cloud), " (${config.cloud.size})")
                                     )
                                 )
                             }
-                        }
-                    }.withLog()
-                    runCatching {
-                        if (config?.file != null) {
+                        }.withLog()
+                        runCatching {
                             if (config.file.isNotEmpty()) {
                                 items.add(
                                     DialogCheckBoxItem(
                                         enum = ConstantUtil.CONFIGURATIONS_KEY_FILE,
-                                        title = StringResourceToken.fromStringArgs(
-                                            StringResourceToken.fromStringId(R.string.files),
-                                            StringResourceToken.fromString(" (${config.file.size})"),
+                                        title = joinOf(
+                                            context.getString(R.string.files),
+                                            " (${config.file.size})",
                                         )
                                     )
                                 )
                             }
-                        }
-                    }.withLog()
+                        }.withLog()
+                        runCatching {
+                            var size = 0
+                            if (config.labels.isNotEmpty()) {
+                                size += config.labels.size
+                            }
+                            if (config.labelAppRefs.isNotEmpty()) {
+                                size += config.labelAppRefs.size
+                            }
+                            if (config.labelFileRefs.isNotEmpty()) {
+                                size += config.labelFileRefs.size
+                            }
+
+                            if (size != 0) {
+                                items.add(
+                                    DialogCheckBoxItem(
+                                        enum = ConstantUtil.CONFIGURATIONS_KEY_LABEL,
+                                        title = joinOf(
+                                            context.getString(R.string.labels),
+                                            " ($size)",
+                                        )
+                                    )
+                                )
+                            }
+                        }.withLog()
+                    }
+
                     if (items.isEmpty()) {
                         emitEffect(IndexUiEffect.DismissSnackbar)
                         emitEffect(IndexUiEffect.ShowSnackbar(type = SnackbarType.Error, message = context.getString(R.string.config_file_may_be_broken), duration = SnackbarDuration.Short))
                     } else {
                         val (s, selection) = intent.dialogState.select(
-                            title = StringResourceToken.fromStringId(R.string._import),
+                            title = context.getString(R.string._import),
                             def = items.map { true },
                             items = items
                         )
-                        if (s) {
+                        if (s.isConfirm) {
                             items.forEachIndexed { i, item ->
                                 if (selection[i]) {
                                     when (item.enum) {
@@ -194,16 +186,17 @@ class IndexViewModel @Inject constructor(
                                                             cloud = "",
                                                             backupDir = ""
                                                         ),
-                                                        packageInfo = PackageInfo(label = "", versionName = "", versionCode = 0L, flags = 0, firstInstallTime = 0L),
+                                                        packageInfo = PackageInfo(label = "", versionName = "", versionCode = 0L, flags = 0, firstInstallTime = 0L, lastUpdateTime = 0L),
                                                         extraInfo = PackageExtraInfo(
                                                             uid = 0,
-                                                            labels = listOf(),
                                                             hasKeystore = false,
                                                             permissions = listOf(),
                                                             ssaid = "",
+                                                            lastBackupTime = 0L,
                                                             blocked = true,
                                                             activated = false,
-                                                            existed = false
+                                                            firstUpdated = true,
+                                                            enabled = true,
                                                         ),
                                                         dataStats = PackageDataStats(),
                                                         dataStates = PackageDataStates(),
@@ -235,7 +228,7 @@ class IndexViewModel @Inject constructor(
                                                             displayBytes = 0,
                                                         ),
                                                         extraInfo = MediaExtraInfo(
-                                                            labels = listOf(),
+                                                            lastBackupTime = 0,
                                                             blocked = true,
                                                             activated = false,
                                                             existed = false,
@@ -257,6 +250,18 @@ class IndexViewModel @Inject constructor(
                                         ConstantUtil.CONFIGURATIONS_KEY_FILE -> {
                                             if (config?.file != null) {
                                                 mediaRepo.addMedia(config.file.map { it.path })
+                                            }
+                                        }
+
+                                        ConstantUtil.CONFIGURATIONS_KEY_LABEL -> {
+                                            if (config?.labels != null) {
+                                                labelsRepo.addLabels(config.labels)
+                                            }
+                                            if (config?.labelAppRefs != null) {
+                                                labelsRepo.addLabelAppCrossRefs(config.labelAppRefs)
+                                            }
+                                            if (config?.labelFileRefs != null) {
+                                                labelsRepo.addLabelFileCrossRefs(config.labelFileRefs)
                                             }
                                         }
                                     }
@@ -286,4 +291,11 @@ class IndexViewModel @Inject constructor(
 
     private val _files: Flow<List<MediaEntity>> = mediaRepo.queryFlow(opType = OpType.BACKUP, blocked = false).flowOnIO()
     val files: StateFlow<List<MediaEntity>> = _files.stateInScope(listOf())
+
+    private val _labels: Flow<List<LabelEntity>> = labelsRepo.getLabelsFlow().flowOnIO()
+    private val _labelAppRefs: Flow<List<LabelAppCrossRefEntity>> = labelsRepo.getAppRefsFlow().flowOnIO()
+    private val _labelFileRefs: Flow<List<LabelFileCrossRefEntity>> = labelsRepo.getFileRefsFlow().flowOnIO()
+    val labels: StateFlow<List<LabelEntity>> = _labels.stateInScope(listOf())
+    val labelAppRefs: StateFlow<List<LabelAppCrossRefEntity>> = _labelAppRefs.stateInScope(listOf())
+    val labelFileRefs: StateFlow<List<LabelFileCrossRefEntity>> = _labelFileRefs.stateInScope(listOf())
 }

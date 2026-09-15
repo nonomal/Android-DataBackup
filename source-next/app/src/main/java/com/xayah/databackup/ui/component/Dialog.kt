@@ -1,0 +1,149 @@
+package com.xayah.databackup.ui.component
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+
+private val DialogIconContainerSize = 56.dp
+private val DialogIconSize = 28.dp
+private val DialogActionIconSize = 18.dp
+
+@Composable
+fun DataBackupDialog(
+    title: String,
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    dismissButton: (@Composable () -> Unit)? = null,
+    icon: (@Composable () -> Unit)? = null,
+    iconContainerColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    iconContentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+    content: (@Composable () -> Unit)? = null,
+) {
+    AlertDialog(
+        modifier = Modifier,
+        onDismissRequest = onDismissRequest,
+        icon = icon?.let { iconContent ->
+            {
+                Surface(
+                    modifier = Modifier.size(DialogIconContainerSize),
+                    shape = CircleShape,
+                    color = iconContainerColor,
+                    contentColor = iconContentColor,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        iconContent()
+                    }
+                }
+            }
+        },
+        title = { Text(text = title) },
+        text = content,
+        confirmButton = confirmButton,
+        dismissButton = dismissButton,
+        shape = MaterialTheme.shapes.extraLarge,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+fun DialogIcon(
+    imageVector: ImageVector,
+    modifier: Modifier = Modifier,
+) {
+    Icon(
+        modifier = modifier.size(DialogIconSize),
+        imageVector = imageVector,
+        contentDescription = null,
+    )
+}
+
+@Composable
+fun DialogActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: ImageVector? = null,
+    colors: ButtonColors = ButtonDefaults.buttonColors(),
+    isLoading: Boolean = false,
+) {
+    Button(
+        modifier = modifier,
+        enabled = enabled && !isLoading,
+        colors = colors,
+        onClick = onClick,
+    ) {
+        if (isLoading) {
+            LoadingIndicator(modifier = Modifier.size(DialogActionIconSize))
+        } else if (icon != null) {
+            Icon(
+                modifier = Modifier.size(DialogActionIconSize),
+                imageVector = icon,
+                contentDescription = null,
+            )
+        }
+        if (isLoading || icon != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        Text(text = text)
+    }
+}
+
+@Composable
+fun DialogDismissButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    TextButton(
+        modifier = modifier,
+        enabled = enabled,
+        onClick = onClick,
+    ) {
+        Text(text = text)
+    }
+}
+
+@Composable
+fun DialogDestructiveButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: ImageVector? = null,
+    isLoading: Boolean = false,
+) {
+    DialogActionButton(
+        text = text,
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        icon = icon,
+        isLoading = isLoading,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.error,
+            contentColor = MaterialTheme.colorScheme.onError,
+        ),
+    )
+}

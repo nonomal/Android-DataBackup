@@ -1,59 +1,61 @@
 [versions]
 # config
-compileSdk = "34"
-minSdk = "26"
-targetSdk = "34"
-# __(API)_(feature)___(version)_(abi)
-# TODO: Feature bit is no longer useful, drop when next api releases
-versionCode = "3411060"
-versionCodeAlpha = "13"
-versionName = "2.0.0"
-compose-compiler = "1.5.12" # https://androidx.dev/storage/compose-compiler/repository
+compileSdk = "35"
+minSdk = "24"
+targetSdk = "35"
+# __(API)____(version)_(abi)
+versionCode = "3501190"
+versionCodeAlpha = "23"
+versionName = "2.0.12"
 
 # libraries
 accompanist = "0.30.1"
-activity-compose = "1.9.0"
-appcompat = "1.6.1"
-androidx-test-ext-junit = "1.1.5"
-espresso-core = "3.5.1"
+activity-compose = "1.9.3"
+appcompat = "1.7.0"
+androidx-test-ext-junit = "1.2.1"
+espresso-core = "3.6.1"
 junit = "4.13.2"
-compose-bom = "2024.05.00"
-core-ktx = "1.13.1"
+compose-bom = "2024.12.01"
+core-ktx = "1.15.0"
 core-splashscreen = "1.0.1"
 gson = "2.10.1"
 hilt-android = "2.49"
 hilt-android-compiler = "2.48"
 hilt-navigation-compose = "1.2.0"
-navigation-compose = "2.7.7"
+hilt-work = "1.2.0"
+navigation-compose = "2.8.5"
 okhttp = "4.12.0"
 retrofit = "2.9.0"
-libsu = "PR182-SNAPSHOT" # TODO Force enable the latest libsu
+libsu = "6.0.0"
+work-manager = "2.10.0"
 zip4j = "2.11.5"
 kotlinx-coroutines-core-jvm = "1.8.0"
 room = "2.6.1"
 coil-compose = "2.4.0"
-dotlottie-android = "0.2.0"
+dotlottie-android = "0.9.2"
 palette = "1.0.0"
 google-services = "4.3.15" # Pinned: https://github.com/firebase/firebase-android-sdk/issues/4693#issuecomment-1765778239
-firebase-crashlytics-gradle = "2.9.9" # Workaround: https://github.com/xamarin/GooglePlayServicesComponents/issues/642#issuecomment-1221520982
-firebase-bom = "32.7.0"
-pickyou = "2.1.7"
+firebase-crashlytics-gradle = "2.9.9" # Pinned for module usage, workaround: https://github.com/xamarin/GooglePlayServicesComponents/issues/642#issuecomment-1221520982
+firebase-bom = "33.7.0"
+pickyou = "3.0.4"
 datastore-preferences = "1.1.1"
 serialization-protobuf = "1.6.0"
 apache-commons = "3.10.0"
 apache-commons-codec = "1.16.1"
-smbj = "0.11.5"
-smbj-rpc = "0.12.0"
+smbj = "0.14.0"
+smbj-rpc = "0.12.9"
 sshj = "0.38.0"
 guava-compat = "9999.0-empty-to-avoid-conflict-with-guava"
 sardine-next = "1.0.2"
-bountycastle = "1.76"
+bountycastle = "1.79"
+animation-graphics = "1.7.6"
 
 # plugins
-android-gradle-plugin = "8.2.2"
-kotlin = "1.9.23"
+android-gradle-plugin = "8.11.1"
+kotlin = "2.0.21"
 hilt = "2.48"
-ksp-kotlin = "1.9.23-1.0.20"
+hilt-work-compiler = "1.2.0"
+ksp-kotlin = "2.0.21-1.0.28"
 refine = "4.4.0"
 
 [libraries]
@@ -61,6 +63,7 @@ accompanist-systemuicontroller = { module = "com.google.accompanist:accompanist-
 accompanist-drawablepainter = { module = "com.google.accompanist:accompanist-drawablepainter", version.ref = "accompanist" }
 accompanist-placeholder = { module = "com.google.accompanist:accompanist-placeholder", version.ref = "accompanist" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+androidx-animation-graphics = { module = "androidx.compose.animation:animation-graphics", version.ref = "animation-graphics" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "core-splashscreen" }
@@ -81,6 +84,7 @@ androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref =
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-ext-junit" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work-manager" }
 bountycastle = { group = "org.bouncycastle", name = "bcutil-jdk18on", version.ref = "bountycastle" }
 refine-annotation = { module = "dev.rikka.tools.refine:annotation", version.ref = "refine" }
 refine-annotation-processor = { module = "dev.rikka.tools.refine:annotation-processor", version.ref = "refine" }
@@ -91,6 +95,8 @@ dotlottie-android = { module = "com.github.LottieFiles:dotlottie-android", versi
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt-android" }
 hilt-android-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt-android-compiler" }
+hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hilt-work" }
+hilt-work-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hilt-work-compiler" }
 kotlinx-coroutines-core-jvm = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm", version.ref = "kotlinx-coroutines-core-jvm" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
@@ -122,6 +128,7 @@ firebase-crashlytics-build-logic = { group = "com.google.firebase", name = "fire
 [plugins]
 android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" } # https://androidx.dev/storage/compose-compiler/repository
 kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
@@ -134,8 +141,10 @@ refine = { id = "dev.rikka.tools.refine", version.ref = "refine" }
 application-common = { id = "application.common", version = "unspecified" }
 application-compose = { id = "application.compose", version = "unspecified" }
 application-hilt = { id = "application.hilt", version = "unspecified" }
+application-hilt-work = { id = "application.hilt.work", version = "unspecified" }
 library-common = { id = "library.common", version = "unspecified" }
 library-hilt = { id = "library.hilt", version = "unspecified" }
+library-hilt-work = { id = "library.hilt.work", version = "unspecified" }
 library-room = { id = "library.room", version = "unspecified" }
 library-compose = { id = "library.compose", version = "unspecified" }
 library-protobuf = { id = "library.protobuf", version = "unspecified" }

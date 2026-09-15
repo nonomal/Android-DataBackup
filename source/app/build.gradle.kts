@@ -3,6 +3,7 @@ import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 plugins {
     alias(libs.plugins.application.common)
     alias(libs.plugins.application.hilt)
+    alias(libs.plugins.application.hilt.work)
     alias(libs.plugins.application.compose)
     alias(libs.plugins.refine)
 }
@@ -19,12 +20,8 @@ android {
         versionName = libs.versions.versionName.get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
 
-    // TODO Force enable the latest libsu
-    configurations.all {
-        resolutionStrategy.force("com.github.topjohnwu.libsu:core:PR182-SNAPSHOT")
-        resolutionStrategy.force("com.github.topjohnwu.libsu:service:PR182-SNAPSHOT")
+        buildConfigField("String[]", "SUPPORTED_LOCALES", generateSupportedLocales())
     }
 
     lint {
@@ -75,6 +72,36 @@ android {
                 "DataBackup-${versionName}-${productFlavors[0].name}-${productFlavors[1].name}-${buildType.name}.apk"
         }
     }
+
+    dependenciesInfo {
+        // Disables dependency metadata when building APKs.
+        includeInApk = false
+        // Disables dependency metadata when building Android App Bundles.
+        includeInBundle = false
+    }
+}
+
+fun generateSupportedLocales(): String {
+    val foundLocales = StringBuilder()
+    foundLocales.append("new String[]{")
+
+    val languages = mutableListOf<String>()
+    fileTree("src/main/res").visit {
+        if(file.path.endsWith("strings.xml")){
+            var languageCode = file.parent.replace("\\", "/").split('/').last()
+                .replace("values-", "").replace("-r", "-")
+            if (languageCode == "values") {
+                languageCode = "en"
+            }
+            languages.add(languageCode)
+        }
+    }
+    languages.sorted().forEach {
+        foundLocales.append("\"").append(it).append("\"").append(",")
+    }
+
+    foundLocales.append("}")
+    return foundLocales.toString().replace(",}","}")
 }
 
 dependencies {
@@ -90,6 +117,7 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:datastore"))
     implementation(project(":core:util"))
+    implementation(project(":core:work"))
     compileOnly(project(":core:hiddenapi"))
     implementation(project(":core:rootservice"))
 
@@ -105,8 +133,10 @@ dependencies {
     implementation(project(":feature:main:cloud"))
     implementation(project(":feature:main:settings"))
     implementation(project(":feature:main:configurations"))
-    implementation(project(":feature:main:packages"))
-    implementation(project(":feature:main:medium"))
+    implementation(project(":feature:main:processing"))
+    implementation(project(":feature:main:list"))
+    implementation(project(":feature:main:details"))
+    implementation(project(":feature:main:history"))
     implementation(project(":feature:main:directory"))
 
     // Splash Screen

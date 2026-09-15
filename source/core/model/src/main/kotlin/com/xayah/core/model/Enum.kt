@@ -8,8 +8,8 @@ const val LZ4_SUFFIX = "tar.lz4"
 
 enum class CompressionType(val type: String, val suffix: String, val compressPara: String, val decompressPara: String) {
     TAR("tar", TAR_SUFFIX, "", ""),
-    ZSTD("zstd", ZSTD_SUFFIX, "zstd -r -T0 --ultra -1 -q --priority=rt", "zstd"),
-    LZ4("lz4", LZ4_SUFFIX, "zstd -r -T0 --ultra -1 -q --priority=rt --format=lz4", "zstd");
+    ZSTD("zstd", ZSTD_SUFFIX, "zstd -r -T0 --ultra -q --priority=rt", "zstd"),
+    LZ4("lz4", LZ4_SUFFIX, "zstd -r -T0 --ultra -q --priority=rt --format=lz4", "zstd");
 
     companion object
 }
@@ -104,10 +104,10 @@ enum class SmbVersion(val text: String) {
     SMB_3_1_1("3.1.1"),
 }
 
-enum class SmbAuthMode(val index: Int) {
-    PASSWORD(0),
-    GUEST(1),
-    ANONYMOUS(2);
+enum class SmbAuthMode() {
+    PASSWORD,
+    GUEST,
+    ANONYMOUS;
 
     companion object
 }
@@ -152,4 +152,21 @@ enum class ThemeType {
     DARK_THEME;
 
     companion object
+}
+
+enum class KillAppOption {
+    DISABLED,
+    OPTION_I,
+    OPTION_II;
+
+    companion object
+}
+
+enum class ProcessingInfoType {
+    NONE,
+    NECESSARY_PREPARATIONS,
+    NECESSARY_REMAINING_DATA_PROCESSING,
+    BACKUP_ITSELF,
+    SAVE_ICONS,
+    SET_UP_INST_ENV,
 }

@@ -1,9 +1,11 @@
 package com.xayah.core.service.util
 
+import android.app.AppOpsManagerHidden
 import android.content.Context
 import com.xayah.core.common.util.toLineString
 import com.xayah.core.data.repository.CloudRepository
 import com.xayah.core.data.repository.PackageRepository
+import com.xayah.core.data.util.srcDir
 import com.xayah.core.database.dao.TaskDao
 import com.xayah.core.datastore.readCleanRestoring
 import com.xayah.core.datastore.readSelectionType
@@ -40,7 +42,7 @@ class PackagesRestoreUtil @Inject constructor(
     private val pathUtil: PathUtil,
 ) {
     companion object {
-        private val TAG = this::class.java.simpleName
+        private const val TAG = "PackagesRestoreUtil"
     }
 
     private fun log(onMsg: () -> String): String = run {
@@ -161,11 +163,10 @@ class PackagesRestoreUtil @Inject constructor(
         val packageName = p.packageName
         val ct = p.indexInfo.compressionType
         val src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
-        var isSuccess: Boolean
+        var isSuccess = true
         val out = mutableListOf<String>()
 
         if (p.getDataSelected(dataType).not()) {
-            isSuccess = true
             t.updateInfo(dataType = dataType, state = OperationState.SKIP)
         } else {
             // Return if the archive doesn't exist.
@@ -191,7 +192,7 @@ class PackagesRestoreUtil @Inject constructor(
 
                         1 -> {
                             Pm.install(userId = userId, src = apksPath.first()).also { result ->
-                                isSuccess = isSuccess and result.isSuccess
+                                isSuccess = isSuccess && result.isSuccess
                                 out.addAll(result.out)
                             }
                         }
@@ -211,13 +212,13 @@ class PackagesRestoreUtil @Inject constructor(
 
                             apksPath.forEach { apkPath ->
                                 Pm.Install.write(session = pmSession, srcName = PathUtil.getFileName(apkPath), src = apkPath).also { result ->
-                                    isSuccess = isSuccess and result.isSuccess
+                                    isSuccess = isSuccess && result.isSuccess
                                     out.addAll(result.out)
                                 }
                             }
 
                             Pm.Install.commit(pmSession).also { result ->
-                                isSuccess = isSuccess and result.isSuccess
+                                isSuccess = isSuccess && result.isSuccess
                                 out.addAll(result.out)
                             }
                         }
@@ -254,65 +255,72 @@ class PackagesRestoreUtil @Inject constructor(
         val dstDir = packageRepository.getDataSrcDir(dataType, userId)
         val dst = packageRepository.getDataSrc(dstDir, packageName)
         val uid = rootService.getPackageUid(packageName = packageName, userId = userId)
-        var isSuccess: Boolean
+        var isSuccess = true
         val out = mutableListOf<String>()
 
         if (p.getDataSelected(dataType).not()) {
-            isSuccess = true
             t.updateInfo(dataType = dataType, state = OperationState.SKIP)
         } else {
-            // Return if the archive doesn't exist.
-            if (rootService.exists(src)) {
-                val sizeBytes = rootService.calculateSize(src)
-                t.updateInfo(dataType = dataType, state = OperationState.PROCESSING, bytes = sizeBytes)
-                // Generate exclusion items.
-                val exclusionList = mutableListOf<String>()
-                when (dataType) {
-                    DataType.PACKAGE_USER, DataType.PACKAGE_USER_DE, DataType.PACKAGE_DATA, DataType.PACKAGE_OBB, DataType.PACKAGE_MEDIA -> {
-                        // Exclude cache
-                        val folders = listOf(".ota", "cache", "lib", "code_cache", "no_backup")
-                        exclusionList.addAll(folders.map { "${SymbolUtil.QUOTE}$packageName/$it${SymbolUtil.QUOTE}" })
-                        if (dataType == DataType.PACKAGE_DATA || dataType == DataType.PACKAGE_OBB || dataType == DataType.PACKAGE_MEDIA) {
-                            // Exclude Backup_*
-                            exclusionList.add("${SymbolUtil.QUOTE}Backup_${SymbolUtil.QUOTE}*")
+            if (uid == -1) {
+                isSuccess = false
+                out.add(log { "Failed to get uid of $packageName." })
+            } else {
+                // Return if the archive doesn't exist.
+                if (rootService.exists(src)) {
+                    val sizeBytes = rootService.calculateSize(src)
+                    t.updateInfo(dataType = dataType, state = OperationState.PROCESSING, bytes = sizeBytes)
+                    // Generate exclusion items.
+                    val exclusionList = mutableListOf<String>()
+                    when (dataType) {
+                        DataType.PACKAGE_USER, DataType.PACKAGE_USER_DE, DataType.PACKAGE_DATA, DataType.PACKAGE_OBB, DataType.PACKAGE_MEDIA -> {
+                            // Exclude cache
+                            val folders = listOf(".ota", "cache", "lib", "code_cache", "no_backup")
+                            exclusionList.addAll(folders.map { "${SymbolUtil.QUOTE}$packageName/$it${SymbolUtil.QUOTE}" })
+                            if (dataType == DataType.PACKAGE_DATA || dataType == DataType.PACKAGE_OBB || dataType == DataType.PACKAGE_MEDIA) {
+                                // Exclude Backup_*
+                                exclusionList.add("${SymbolUtil.QUOTE}Backup_${SymbolUtil.QUOTE}*")
+                            }
+
                         }
 
+                        else -> {}
+                    }
+                    log { "ExclusionList: $exclusionList." }
+
+                    // Get the SELinux context of the path.
+                    val pathContext: String
+                    SELinux.getContext(path = dst).also { result ->
+                        pathContext = if (result.isSuccess) result.outString else ""
                     }
 
-                    else -> {}
-                }
-                log { "ExclusionList: $exclusionList." }
+                    log { "Original SELinux context: $pathContext." }
 
-                // Get the SELinux context of the path.
-                val pathContext: String
-                SELinux.getContext(path = dst).also { result ->
-                    pathContext = if (result.isSuccess) result.outString else ""
-                }
-
-                log { "Original SELinux context: $pathContext." }
-
-                // Decompress the archive.
-                Tar.decompress(
-                    exclusionList = exclusionList,
-                    clear = if (context.readCleanRestoring().first()) "--recursive-unlink" else "",
-                    m = true,
-                    src = src,
-                    dst = dstDir,
-                    extra = ct.decompressPara
-                ).also { result ->
-                    isSuccess = result.isSuccess
-                    out.addAll(result.out)
-                }
-
-                // Restore SELinux context.
-                if (uid != -1) {
-                    SELinux.chown(uid = uid, path = dst).also { result ->
+                    // Decompress the archive.
+                    Tar.decompress(
+                        exclusionList = exclusionList,
+                        clear = if (context.readCleanRestoring().first()) "--recursive-unlink" else "",
+                        m = true,
+                        src = src,
+                        dst = dstDir,
+                        extra = ct.decompressPara
+                    ).also { result ->
                         isSuccess = result.isSuccess
+                        out.addAll(result.out)
+                    }
+
+                    // Restore SELinux context.
+                    var gid: UInt = uid.toUInt()
+                    if (dataType == DataType.PACKAGE_DATA || dataType == DataType.PACKAGE_OBB || dataType == DataType.PACKAGE_MEDIA) {
+                        val (_, pathGid) = rootService.getUidGid(dataType.srcDir(userId))
+                        gid = pathGid
+                    }
+                    SELinux.chown(uid = uid.toUInt(), gid = gid, path = dst).also { result ->
+                        isSuccess = isSuccess && result.isSuccess
                         out.addAll(result.out)
                     }
                     if (pathContext.isNotEmpty()) {
                         SELinux.chcon(context = pathContext, path = dst).also { result ->
-                            isSuccess = result.isSuccess
+                            isSuccess = isSuccess && result.isSuccess
                             out.addAll(result.out)
                         }
                     } else {
@@ -322,7 +330,7 @@ class PackagesRestoreUtil @Inject constructor(
                         }
                         if (parentContext.isNotEmpty()) {
                             SELinux.chcon(context = parentContext, path = dst).also { result ->
-                                isSuccess = result.isSuccess
+                                isSuccess = isSuccess && result.isSuccess
                                 out.addAll(result.out)
                             }
                         } else {
@@ -330,20 +338,18 @@ class PackagesRestoreUtil @Inject constructor(
                             out.add(log { "Failed to restore context: $dst" })
                         }
                     }
+
                 } else {
-                    isSuccess = false
-                    out.add(log { "Failed to get uid of $packageName." })
-                }
-            } else {
-                if (dataType == DataType.PACKAGE_USER) {
-                    isSuccess = false
-                    out.add(log { "Not exist: $src" })
-                    t.updateInfo(dataType = dataType, state = OperationState.ERROR, log = out.toLineString())
-                    return@run ShellResult(code = -1, input = listOf(), out = out)
-                } else {
-                    out.add(log { "Not exist and skip: $src" })
-                    t.updateInfo(dataType = dataType, state = OperationState.SKIP, log = out.toLineString())
-                    return@run ShellResult(code = -2, input = listOf(), out = out)
+                    if (dataType == DataType.PACKAGE_USER) {
+                        isSuccess = false
+                        out.add(log { "Not exist: $src" })
+                        t.updateInfo(dataType = dataType, state = OperationState.ERROR, log = out.toLineString())
+                        return@run ShellResult(code = -1, input = listOf(), out = out)
+                    } else {
+                        out.add(log { "Not exist and skip: $src" })
+                        t.updateInfo(dataType = dataType, state = OperationState.SKIP, log = out.toLineString())
+                        return@run ShellResult(code = -2, input = listOf(), out = out)
+                    }
                 }
             }
             t.updateInfo(dataType = dataType, state = if (isSuccess) OperationState.DONE else OperationState.ERROR, log = out.toLineString())
@@ -356,20 +362,31 @@ class PackagesRestoreUtil @Inject constructor(
         log { "Restoring permissions..." }
 
         val packageName = p.packageName
+        val uid = rootService.getPackageUid(packageName = packageName, userId = userId)
         val user = rootService.getUserHandle(userId)
         val permissions = p.extraInfo.permissions
 
         if (p.permissionSelected) {
-            Appops.reset(userId = userId, packageName = packageName)
-            log { "Permissions size: ${permissions.size}..." }
-            permissions.forEach {
-                log { "Permission name: ${it.name}, isGranted: ${it.isGranted}" }
-                runCatching {
-                    if (it.isGranted)
-                        rootService.grantRuntimePermission(packageName, it.name, user!!)
-                    else
-                        rootService.revokeRuntimePermission(packageName, it.name, user!!)
+            if (uid != -1) {
+                Appops.reset(userId = userId, packageName = packageName)
+                log { "Permissions size: ${permissions.size}..." }
+                permissions.forEach {
+                    log { "Permission name: ${it.name}, isGranted: ${it.isGranted}, op: ${it.op}, mode: ${it.mode}" }
+                    runCatching {
+                        if (it.isGranted) {
+                            rootService.grantRuntimePermission(packageName, it.name, user!!)
+                        } else {
+                            rootService.revokeRuntimePermission(packageName, it.name, user!!)
+                        }
+                        if (it.op != AppOpsManagerHidden.OP_NONE) {
+                            it.mode?.also { mode ->
+                                rootService.setOpsMode(it.op, uid, packageName, mode)
+                            }
+                        }
+                    }
                 }
+            } else {
+                log { "Failed to get uid of $packageName." }
             }
         } else {
             log { "Skip." }
@@ -380,15 +397,19 @@ class PackagesRestoreUtil @Inject constructor(
         log { "Restoring ssaid..." }
 
         val packageName = p.packageName
-        val uid = p.extraInfo.uid
+        val uid = rootService.getPackageUid(packageName = packageName, userId = userId)
         val ssaid = p.extraInfo.ssaid
 
         if (p.ssaidSelected) {
-            if (ssaid.isNotEmpty()) {
-                log { "Ssaid: $ssaid" }
-                rootService.setPackageSsaidAsUser(packageName, uid, userId, ssaid)
+            if (uid != -1) {
+                if (ssaid.isNotEmpty()) {
+                    log { "Ssaid: $ssaid" }
+                    rootService.setPackageSsaidAsUser(packageName, uid, userId, ssaid)
+                } else {
+                    log { "Ssaid is empty, skip." }
+                }
             } else {
-                log { "Ssaid is empty, skip." }
+                log { "Failed to get uid of $packageName." }
             }
         } else {
             log { "Skip." }
